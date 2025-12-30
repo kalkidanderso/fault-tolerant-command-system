@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - SERVER_PORT=3000
+      - DATABASE_PATH=/app/data/commands.db
+      - LOG_LEVEL=info
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--spider", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - fault-tolerant-net
+    restart: always
+
+  agent:
+    build:
+      context: .
+      dockerfile: agent/Dockerfile
+    environment:
+      - SERVER_URL=http://server:3000
+      - AGENT_ID=agent-1
+      - POLL_INTERVAL_MS=1000
+      - LOG_LEVEL=info
+    depends_on:
+      - server
+    networks:
+      - fault-tolerant-net
+    restart: on-failure
+
+networks:
+  fault-tolerant-net:
+    driver: bridge
